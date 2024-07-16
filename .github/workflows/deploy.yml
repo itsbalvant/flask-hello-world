@@ -3,22 +3,36 @@ name: Deploy to VM
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: Deploy to VM
-      env:
-        PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-        HOST: ${{ secrets.SERVER_IP }}
-        USER: ${{ secrets.SERVER_USER }}
+    
+    - name: Run tests
       run: |
-        echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-        ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
-          cd ~/flask-hello-world &&
-          git pull origin main &&
+        pip install -r requirements.txt
+        python -m unittest discover tests
+
+    - name: Deploy to VM
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        script: |
+          cd /home/balvant/flask-hello-world
+          git pull origin main
+          pip install -r requirements.txt
           sudo systemctl restart flask-app
-        '
+
+    - name: Notify Slack
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: Deployment completed successfully!
+      env:
+        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      if: success()
