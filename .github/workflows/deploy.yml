@@ -4,17 +4,21 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
- 
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
     
-    - name: Run tests
+    - name: Install dependencies
       run: |
         pip install -r requirements.txt
-        python -m unittest discover tests
+
+    - name: Run tests
+      run: |
+        python -m unittest discover -s tests -p '*_test.py'
 
     - name: Deploy to VM
       uses: appleboy/ssh-action@master
@@ -34,6 +38,6 @@ jobs:
         status: ${{ job.status }}
         text: Deployment completed successfully!
       env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
       if: success()
