@@ -18,8 +18,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip --break-system-packages
+        pip install -r requirements.txt --break-system-packages
 
     - name: Deploy to VM
       uses: appleboy/ssh-action@master
@@ -28,9 +28,9 @@ jobs:
         username: ${{ secrets.USERNAME }}
         password: ${{ secrets.PASSWORD }}
         script: |
-          cd /path/to/your/app
-          git pull origin main
-          pip install -r requirements.txt
+          cd /home/balvant/flask-hello-world
+          git pull origin master
+          pip install -r requirements.txt --break-system-packages
           sudo systemctl restart your-flask-service
 
     - name: Notify Slack
