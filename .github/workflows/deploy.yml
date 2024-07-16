@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
+    
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -18,10 +18,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip --break-system-packages
-        pip install -r requirements.txt --break-system-packages
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: python -m unittest discover -v tests
 
     - name: Deploy to VM
+      id: deploy
       uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.HOST }}
@@ -29,16 +33,30 @@ jobs:
         password: ${{ secrets.PASSWORD }}
         script: |
           cd /home/balvant/flask-hello-world
-          git pull origin master
-          pip install -r requirements.txt --break-system-packages
-          sudo systemctl restart your-flask-service
+          git stash
+          git pull origin main
+          git stash pop
+          pip install -r requirements.txt
+          sudo systemctl restart flask-app
 
-    - name: Notify Slack
+    - name: Notify Slack on Success
+      if: success()
       uses: 8398a7/action-slack@v3
       with:
         status: ${{ job.status }}
         text: Deployment completed successfully!
+        fields: repo,message,commit,author,action,eventName,ref,workflow
       env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-      if: success()
+
+    - name: Notify Slack on Failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: Deployment failed!
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
